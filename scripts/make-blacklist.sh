@@ -1,11 +1,11 @@
 #!/bin/bash
 
-function list_1() {
-    curl 'https://tspprs.com/dl/{ads,malware,phishing,ransomware,scam,tracking}' | grep -v '\-\-\_curl\_\-\-'
-}
+set -e
 
-function list_2() {
-    curl 'http://pgl.yoyo.org/adservers/serverlist.php?mimetype=plaintext' | grep -v '#' | sed 's/.* //'
+function get_blacklists() {
+    curl --silent --location 'https://v.firebog.net/hosts/lists.php?type=tick' \
+        | xargs -I {} curl {} \
+        | grep -v -e '#' -e '!' -e 'localhost'
 }
 
 function lower() {
@@ -20,10 +20,19 @@ function filter() {
     sed '/[^a-zA-Z0-9\._\-]/d' | sed '/^$/d' | sed '/^-.*$/d' | sed '/^.*-$/d'
 }
 
+function clean() {
+    sed 's/||\(.*\)\^$/\1/' \
+        | sed 's/\([[:digit:]]\+\.\)\{3\}[[:digit:]] //'
+}
+
+cd $(dirname $0)
+rm ../data/blacklist.txt
+touch ../data/blacklist.txt
 export LC_ALL='C'
-cat <(list_1) <(list_2) \
+get_blacklists \
     | lower \
     | trim \
+    | clean \
     | filter \
     | sort \
     | uniq \
